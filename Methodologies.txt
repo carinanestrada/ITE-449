@@ -1,0 +1,75 @@
+Methodologies
+2.1. Testbed File Server
+The testbed will be a virtual machine running an Ubuntu server with an SMB File share. Virtual Machine snapshots will make resets easier. Linux is widely used as a network-attached storage (NAS) or file server in small- to medium-scale environments. Linux offers snapshot options and flexible permission schemes that support least-privilege access.
+
+2.2. Configurations
+The testbed is configured to be a file server running in a small-scale environment:
+A Samba share, valid users, and read/write permissions that use least privilege, with no administrative or full control access for normal users.
+User permissions: Valid accounts with permissions restricted to the share path.
+Snapshot capability: A snapshot feature is enabled, such as one available on a Linux distribution or on a network-attached storage device when using its OS.
+
+
+2.3. Ransomware Simulator
+The ransomware simulator is a Python script with ransomware behavior to ensure that defense systems are tested consistently and safely. The tool contains no malware and does not steal data. Data on the storage device, specifically in the Samba share, will be encrypted to simulate ransomware behavior.
+
+2.4. Behaviors Implemented
+The ransomware simulator attempts to:
+Encrypt: The tool traverses the specified paths and renames files by appending a specific extension (CAE). 
+Metadata changes: The tool alters file timestamps and metadata in a manner that mimics ransomware attacks. 
+High I/O churn: The tool initiates a high number of read and write operations to simulate ransomware attacks and test the defense systems. 
+
+
+2.5. Safety and Ethics
+The tool operates within the testbed network and only on the sandbox file server to minimize exposure. The tool does not damage, spread, nor does it use any known malware.
+2.6. Evaluation
+Recovery Point Objective (RPO)
+The amount of data or time since the last known good snapshot. We record the timestamp of the last snapshot before we begin simulating user actions and the timestamp at which our simulator finishes. We will then calculate the amount of data or the number of files that would be lost if we had to recover from the last known good state. We will report our results per defense configuration.
+
+Recovery Time Objective (RTO)
+This is the time elapsed since we ended our simulation of an attacker’s actions until we finished restoring our file system with verified integrity. We describe our recovery process from a given snapshot or backup to the verification of our file system. We will then report our results per configuration.
+
+Blast Radius
+The proportion of files affected by our simulator. For example, our simulator calculates the proportion of files that are renamed or “encrypted.” We report our results per defense configuration.
+
+Project expectations:
+
+Practical Ransomware Resilience for Small Storage Systems
+Research question: Which low-cost defenses measurably reduce ransomware impact on a NAS-like file service without killing usability?
+
+Core idea: Build a testbed “departmental file server” (Linux + Samba/NFS, or a small NAS OS in a VM) and evaluate defenses under realistic ransomware behaviors (rapid rename/encrypt, partial encryption, shadow-copy deletion attempts, high I/O churn).
+
+What students build
+
+A sandbox file server with typical configs (SMB shares, user permissions, snapshots).
+
+A “ransomware simulator” (benign) that encrypts/renames files, touches metadata, and attempts common destructive actions (e.g., deleting snapshots if misconfigured).
+
+Defense variants:
+
+Snapshot schedule + retention policies
+
+Immutable snapshots (where supported)
+
+Least-privilege share permissions (no admin tokens on clients)
+
+Canary files / honey directories for detection
+
+Rate limiting / I/O anomaly detection (simple heuristics)
+
+Evaluation (paper-ready metrics)
+
+Recovery Point Objective (RPO): data lost since last good snapshot.
+
+Recovery Time Objective (RTO): time to restore service + verify integrity.
+
+Blast radius: % of files affected under each configuration.
+
+False positives: benign bulk copy operations triggering alarms.
+
+Overhead: CPU/I/O impact of snapshots + detection rules.
+
+Why it’s publishable
+
+Concrete, reproducible benchmark suite for “SMB/NAS ransomware resilience.”
+
+Actionable configuration guidance for resource-constrained orgs.
