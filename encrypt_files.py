@@ -29,6 +29,8 @@ import argparse
 import os
 from dataclasses import dataclass
 import time
+import sys
+import shutil
 from pathlib import Path
 from typing import Optional
 
@@ -42,6 +44,7 @@ DEFAULT_INFO_FILENAME = "encryption_info.txt"
 class EncryptConfig:
     folder: Path
     info_file: Path
+    slow_demo: bool
 
 
 @dataclass
@@ -70,6 +73,14 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         "--decrypt",
         action="store_true",
         help="Run in decrypt mode instead of encrypt mode.",
+    )
+    parser.add_argument(
+        "--slow-demo",
+        action="store_true",
+        help=(
+            "Slow encryption to roughly 1 minute with a visible progress bar. "
+            "If not set, encryption runs at full speed."
+        ),
     )
     parser.add_argument(
         "--info-file",
@@ -101,7 +112,11 @@ def build_encrypt_config(args: argparse.Namespace) -> EncryptConfig:
     else:
         info_file = folder / DEFAULT_INFO_FILENAME
 
-    return EncryptConfig(folder=folder, info_file=info_file)
+    return EncryptConfig(
+        folder=folder,
+        info_file=info_file,
+        slow_demo=bool(getattr(args, "slow_demo", False)),
+    )
 
 
 def build_decrypt_config(args: argparse.Namespace) -> DecryptConfig:
@@ -137,7 +152,7 @@ def write_info_file(info_path: Path, key: bytes) -> None:
     """
     info_path.parent.mkdir(parents=True, exist_ok=True)
     message_lines = [
-        "This folder has been encrypted as part of a cybersecurity class exercise.",
+        "This folder has been encrypted by Ctl+Alt+encrypt as part of a cybersecurity class exercise.",
         "Each individual file has been encrypted using the same symmetric key",
         "and renamed with the `.enc` extension (for example: `file.txt.enc`).",
         "",
@@ -150,6 +165,61 @@ def write_info_file(info_path: Path, key: bytes) -> None:
     ]
     info_path.write_text("\n".join(message_lines), encoding="utf-8")
 
+
+def show_laughing_skull() -> None:
+    """
+    Display a looping red ASCII skull with a centered Ctl+Alt+encrypt header
+    until the user presses Ctrl+C.
+    """
+    skull_path = Path(__file__).resolve().parent / "skulls.txt"
+    try:
+        skull_text = skull_path.read_text(encoding="utf-8")
+    except OSError:
+        skull_text = "[ skull art file 'skulls.txt' not found ]"
+
+    frames = [skull_text]
+
+    try:
+        idx = 0
+        while True:
+            cols = shutil.get_terminal_size(fallback=(80, 24)).columns
+            header = "Ctl+Alt+encrypt"
+            subtitle = "All your files are belong to us."
+            pad = max(0, (cols - len(header)) // 2)
+            pad_sub = max(0, (cols - len(subtitle)) // 2)
+            header_line = " " * pad + header
+            subtitle_line = " " * pad_sub + subtitle
+
+            # Center skull lines as well
+            skull_lines = frames[idx % len(frames)].splitlines()
+            centered_lines = []
+            for line in skull_lines:
+                stripped = line.rstrip("\n")
+                if not stripped:
+                    centered_lines.append("")
+                else:
+                    pad_line = max(0, (cols - len(stripped)) // 2)
+                    centered_lines.append(" " * pad_line + stripped)
+            centered_skull = "\n".join(centered_lines)
+
+            # Clear screen and move cursor home.
+            sys.stdout.write("\033[2J\033[H")
+            # Header & subtitle in red.
+            sys.stdout.write("\033[31m")
+            sys.stdout.write(header_line + "\n")
+            sys.stdout.write(subtitle_line + "\n\n")
+            sys.stdout.write("\033[0m")
+            # Skull in red.
+            sys.stdout.write("\033[31m")
+            sys.stdout.write(centered_skull)
+            sys.stdout.write("\033[0m")
+            sys.stdout.flush()
+
+            idx += 1
+            time.sleep(0.25)
+    except KeyboardInterrupt:
+        sys.stdout.write("\n")
+        sys.stdout.flush()
 
 def read_key_from_info_file(info_path: Path) -> bytes:
     """
@@ -202,10 +272,17 @@ def encrypt_files(config: EncryptConfig) -> None:
     if total == 0:
         print("[!] No files found to encrypt.")
     else:
-        target_seconds = 60.0
-        delay_per_file = target_seconds / total
+        target_seconds = 60.0 if config.slow_demo else None
 
-        print(f"[+] Found {total} files to encrypt. Target duration ~{int(target_seconds)} seconds.")
+        if target_seconds is not None:
+            print(
+                f"[+] Found {total} files to encrypt. "
+                f"Target duration ~{int(target_seconds)} seconds."
+            )
+            delay_per_file = target_seconds / total
+        else:
+            print(f"[+] Found {total} files to encrypt.")
+            delay_per_file = 0.0
 
         bar_width = 40
         for index, file_path in enumerate(files_to_encrypt, start=1):
@@ -225,8 +302,8 @@ def encrypt_files(config: EncryptConfig) -> None:
             percent = int(progress * 100)
             print(f"\r[ {bar} ] {percent:3d}% ({index}/{total})", end="", flush=True)
 
-            # Slow down to roughly the target duration.
-            if index < total:
+            # Slow down to roughly the target duration if requested.
+            if delay_per_file > 0 and index < total:
                 time.sleep(delay_per_file)
 
         print()  # newline after progress bar
@@ -296,6 +373,8 @@ def main(argv: Optional[list[str]] = None) -> None:
     else:
         cfg = build_encrypt_config(args)
         encrypt_files(cfg)
+        print("[+] Encryption complete. Press Ctrl+C to stop the animation.")
+        show_laughing_skull()
 
 
 if __name__ == "__main__":

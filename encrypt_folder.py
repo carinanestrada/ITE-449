@@ -22,6 +22,8 @@ import io
 import os
 from dataclasses import dataclass
 import time
+import sys
+import shutil
 from pathlib import Path
 from typing import Optional
 import zipfile
@@ -37,6 +39,7 @@ class EncryptConfig:
     folder: Path
     output_file: Path
     info_file: Path
+    slow_demo: bool
 
 
 @dataclass
@@ -73,6 +76,14 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         "--decrypt",
         action="store_true",
         help="Run in decrypt mode instead of encrypt mode.",
+    )
+    parser.add_argument(
+        "--slow-demo",
+        action="store_true",
+        help=(
+            "Slow zipping/encryption to roughly 1 minute with a visible progress bar. "
+            "If not set, zipping runs at full speed."
+        ),
     )
     parser.add_argument(
         "--encrypted-file",
@@ -118,7 +129,12 @@ def build_encrypt_config(args: argparse.Namespace) -> EncryptConfig:
     else:
         info_file = folder / DEFAULT_INFO_FILENAME
 
-    return EncryptConfig(folder=folder, output_file=output_file, info_file=info_file)
+    return EncryptConfig(
+        folder=folder,
+        output_file=output_file,
+        info_file=info_file,
+        slow_demo=bool(getattr(args, "slow_demo", False)),
+    )
 
 
 def build_decrypt_config(args: argparse.Namespace) -> DecryptConfig:
@@ -160,7 +176,9 @@ def build_decrypt_config(args: argparse.Namespace) -> DecryptConfig:
 
 
 def zip_folder_to_bytes(
-    folder: Path, exclude: Optional[set[Path]] = None, target_seconds: float = 60.0
+    folder: Path,
+    exclude: Optional[set[Path]] = None,
+    target_seconds: Optional[float] = None,
 ) -> bytes:
     """
     Create a zip archive of the given folder and return its bytes.
@@ -185,7 +203,11 @@ def zip_folder_to_bytes(
     if total == 0:
         return buffer.getvalue()
 
-    delay_per_file = target_seconds / total
+    if target_seconds is not None and target_seconds > 0:
+        delay_per_file = target_seconds / total
+    else:
+        delay_per_file = 0.0
+
     bar_width = 40
 
     with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
@@ -202,7 +224,7 @@ def zip_folder_to_bytes(
                 flush=True,
             )
 
-            if index < total:
+            if delay_per_file > 0 and index < total:
                 time.sleep(delay_per_file)
 
     print()  # newline after progress bar
@@ -220,7 +242,7 @@ def write_info_file(info_path: Path, key: bytes, encrypted_file: Path) -> None:
     """
     info_path.parent.mkdir(parents=True, exist_ok=True)
     message_lines = [
-        "This folder has been encrypted as part of a cybersecurity class exercise.",
+        "This folder has been encrypted by Ctl+Alt+encrypt as part of a cybersecurity class exercise.",
         f"The encrypted archive file is: {encrypted_file}",
         "",
         "Use the Python script `encrypt_folder.py` together with the key below",
@@ -231,6 +253,62 @@ def write_info_file(info_path: Path, key: bytes, encrypted_file: Path) -> None:
         "",
     ]
     info_path.write_text("\n".join(message_lines), encoding="utf-8")
+
+
+def show_laughing_skull() -> None:
+    """
+    Display a looping red ASCII skull with a centered Ctl+Alt+encrypt header
+    until the user presses Ctrl+C.
+    """
+    skull_path = Path(__file__).resolve().parent / "skulls.txt"
+    try:
+        skull_text = skull_path.read_text(encoding="utf-8")
+    except OSError:
+        skull_text = "[ skull art file 'skulls.txt' not found ]"
+
+    frames = [skull_text]
+
+    try:
+        idx = 0
+        while True:
+            cols = shutil.get_terminal_size(fallback=(80, 24)).columns
+            header = "Ctl+Alt+encrypt"
+            subtitle = "All your files are belong to us."
+            pad = max(0, (cols - len(header)) // 2)
+            pad_sub = max(0, (cols - len(subtitle)) // 2)
+            header_line = " " * pad + header
+            subtitle_line = " " * pad_sub + subtitle
+
+            # Center skull lines as well
+            skull_lines = frames[idx % len(frames)].splitlines()
+            centered_lines = []
+            for line in skull_lines:
+                stripped = line.rstrip("\n")
+                if not stripped:
+                    centered_lines.append("")
+                else:
+                    pad_line = max(0, (cols - len(stripped)) // 2)
+                    centered_lines.append(" " * pad_line + stripped)
+            centered_skull = "\n".join(centered_lines)
+
+            # Clear screen and move cursor home.
+            sys.stdout.write("\033[2J\033[H")
+            # Header & subtitle in red.
+            sys.stdout.write("\033[31m")
+            sys.stdout.write(header_line + "\n")
+            sys.stdout.write(subtitle_line + "\n\n")
+            sys.stdout.write("\033[0m")
+            # Skull in red.
+            sys.stdout.write("\033[31m")
+            sys.stdout.write(centered_skull)
+            sys.stdout.write("\033[0m")
+            sys.stdout.flush()
+
+            idx += 1
+            time.sleep(0.25)
+    except KeyboardInterrupt:
+        sys.stdout.write("\n")
+        sys.stdout.flush()
 
 
 def delete_encrypted_source_files(
@@ -298,7 +376,17 @@ def encrypt_folder(config: EncryptConfig) -> None:
     print(f"[+] Zipping folder: {config.folder}")
     # Exclude the info file and encrypted archive from the zip (especially if re-running).
     exclude_paths: set[Path] = {config.info_file, config.output_file}
-    zip_bytes = zip_folder_to_bytes(config.folder, exclude=exclude_paths)
+    target_seconds = 60.0 if config.slow_demo else None
+    if target_seconds is not None:
+        print(
+            f"[+] Building encrypted archive. "
+            f"Target duration ~{int(target_seconds)} seconds."
+        )
+    zip_bytes = zip_folder_to_bytes(
+        config.folder,
+        exclude=exclude_paths,
+        target_seconds=target_seconds,
+    )
 
     print("[+] Generating encryption key")
     key = generate_key()
@@ -351,6 +439,8 @@ def main(argv: Optional[list[str]] = None) -> None:
     else:
         cfg = build_encrypt_config(args)
         encrypt_folder(cfg)
+        print("[+] Encryption complete. Press Ctrl+C to stop the animation.")
+        show_laughing_skull()
 
 
 if __name__ == "__main__":
