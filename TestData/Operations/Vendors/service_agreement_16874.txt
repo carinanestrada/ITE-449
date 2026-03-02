@@ -1,0 +1,9 @@
+Operations / Vendors :: service_agreement_16874
+-----------------------------------------------
+Generated test data for ITE-449 on 2026-03-02.
+This is fake business data intended for a controlled ransomware
+simulation and encryption exercise only.
+
+Department: Operations
+Folder: Vendors
+Record ID: 16874
