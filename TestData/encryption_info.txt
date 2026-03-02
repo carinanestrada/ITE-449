@@ -1,0 +1,8 @@
+This folder has been encrypted as part of a cybersecurity class exercise.
+The encrypted archive file is: /home/rob/Code/ITE-449/TestData/TestData.zip.enc
+
+Use the Python script `encrypt_folder.py` together with the key below
+to decrypt the archive and restore the original files.
+
+Encryption key (Fernet, base64 URL-safe):
+JpNfQ8SnWMY4uWi7kpadibmwsXr2-09_jsup53sIJiU=

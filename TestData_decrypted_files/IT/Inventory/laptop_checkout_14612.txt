@@ -1,9 +1,0 @@
-IT / Inventory :: laptop_checkout_14612
----------------------------------------
-Generated test data for ITE-449 on 2026-03-02.
-This is fake business data intended for a controlled ransomware
-simulation and encryption exercise only.
-
-Department: IT
-Folder: Inventory
-Record ID: 14612
