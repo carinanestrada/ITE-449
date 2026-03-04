@@ -1,0 +1,89 @@
+Date,Category,Vendor,Amount,Notes
+2025-12-26,Supplies,TechTrain Inc,306.57,Reimbursable
+2025-10-13,Training,Restaurant Group,1323.24,Paid
+2025-02-28,Hardware,Acme Corp,1631.93,Paid
+2025-03-26,Hardware,Acme Corp,1915.75,Paid
+2025-12-01,Hardware,TechTrain Inc,1245.17,Paid
+2025-03-11,Training,TechTrain Inc,1112.96,Reimbursable
+2025-05-21,Supplies,AWS,85.37,Reimbursable
+2025-12-06,Software,Office Depot,1415.48,
+2025-01-19,Supplies,TechTrain Inc,126.87,Pending
+2025-07-01,Supplies,AWS,1505.72,
+2025-02-02,Software,Acme Corp,2181.59,Reimbursable
+2025-08-06,Software,Office Depot,2417.88,Reimbursable
+2025-05-21,Supplies,AWS,376.83,
+2025-04-18,Travel,AWS,1803.96,Paid
+2025-05-07,Supplies,AWS,1863.52,Pending
+2025-05-22,Meals,Acme Corp,444.94,Paid
+2025-03-01,Software,Restaurant Group,174.24,Reimbursable
+2025-02-16,Hardware,AWS,1163.72,Pending
+2025-07-07,Meals,Office Depot,286.43,Paid
+2025-05-20,Travel,TechTrain Inc,2328.33,
+2025-04-05,Hardware,AWS,29.39,Pending
+2025-12-19,Supplies,TechTrain Inc,34.13,Pending
+2025-03-21,Software,Restaurant Group,887.22,
+2025-11-17,Hardware,Acme Corp,1677.27,Pending
+2025-09-26,Software,Office Depot,2083.52,Paid
+2025-03-26,Supplies,Office Depot,2306.54,Reimbursable
+2025-03-23,Hardware,Office Depot,788.19,Reimbursable
+2025-02-18,Meals,TechTrain Inc,1751.36,Paid
+2025-05-18,Hardware,Acme Corp,431.39,Reimbursable
+2025-10-07,Travel,Acme Corp,543.8,Reimbursable
+2025-05-15,Software,TechTrain Inc,2405.97,
+2025-02-13,Software,TechTrain Inc,2468.81,
+2025-10-07,Training,AWS,1128.87,Reimbursable
+2025-07-08,Travel,AWS,598.36,
+2025-11-01,Hardware,AWS,1937.15,
+2025-08-11,Hardware,AWS,1922.19,
+2025-04-15,Meals,Office Depot,2324.39,Pending
+2025-09-28,Hardware,Office Depot,295.77,Paid
+2025-02-22,Travel,Restaurant Group,728.35,Reimbursable
+2025-12-05,Supplies,Office Depot,1837.33,Paid
+2025-01-13,Hardware,TechTrain Inc,2337.45,Paid
+2025-03-25,Travel,Office Depot,1744.46,Paid
+2025-02-10,Meals,TechTrain Inc,861.2,Reimbursable
+2025-02-11,Meals,Acme Corp,1354.66,Pending
+2025-11-17,Meals,TechTrain Inc,1112.76,Paid
+2025-03-10,Hardware,TechTrain Inc,2396.29,Reimbursable
+2025-12-11,Software,Acme Corp,597.65,
+2025-06-21,Software,Acme Corp,1785.16,Paid
+2025-12-25,Travel,AWS,541.25,Paid
+2025-04-24,Hardware,Restaurant Group,2028.9,
+2025-08-21,Hardware,TechTrain Inc,791.79,Paid
+2025-08-18,Travel,Restaurant Group,2037.77,Pending
+2025-05-08,Software,Acme Corp,2012.15,Reimbursable
+2025-01-13,Training,AWS,488.89,
+2025-05-22,Software,AWS,1546.83,Reimbursable
+2025-10-24,Hardware,TechTrain Inc,1110.69,Paid
+2025-10-15,Travel,Office Depot,1822.08,Pending
+2025-11-08,Software,AWS,592.24,Pending
+2025-08-10,Meals,Acme Corp,1436.57,
+2025-04-14,Supplies,AWS,1391.11,Reimbursable
+2025-09-28,Hardware,Restaurant Group,1853.67,
+2025-04-07,Meals,Office Depot,809.34,
+2025-02-03,Supplies,Restaurant Group,1148.8,
+2025-01-20,Travel,Office Depot,2048.67,
+2025-07-24,Training,Office Depot,1918.03,Reimbursable
+2025-12-16,Supplies,Acme Corp,1403.58,Pending
+2025-03-12,Software,Office Depot,147.56,Reimbursable
+2025-11-06,Travel,TechTrain Inc,1474.86,Pending
+2025-01-24,Supplies,Restaurant Group,2120.95,Pending
+2025-04-24,Hardware,Restaurant Group,1469.99,Paid
+2025-01-27,Software,Restaurant Group,576.08,
+2025-08-04,Software,Office Depot,2360.97,Pending
+2025-06-21,Travel,Office Depot,1821.13,Paid
+2025-04-19,Hardware,Office Depot,139.76,Paid
+2025-12-20,Supplies,Acme Corp,1694.97,Pending
+2025-03-18,Software,TechTrain Inc,758.92,Reimbursable
+2025-02-22,Travel,Office Depot,2107.85,Paid
+2025-07-23,Software,Restaurant Group,1121.8,Reimbursable
+2025-10-11,Training,TechTrain Inc,461.33,Reimbursable
+2025-11-20,Travel,Acme Corp,1024.87,
+2025-02-06,Hardware,AWS,2440.19,Reimbursable
+2025-05-24,Travel,AWS,226.34,Reimbursable
+2025-05-25,Training,TechTrain Inc,44.26,Pending
+2025-05-16,Hardware,Office Depot,22.53,
+2025-08-07,Software,AWS,2154.39,Paid
+2025-04-12,Meals,Office Depot,102.99,Reimbursable
+2025-12-01,Hardware,TechTrain Inc,1984.09,Paid
+2025-12-07,Training,Office Depot,1531.28,Reimbursable

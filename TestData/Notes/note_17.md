@@ -1,0 +1,23 @@
+# Note 17
+
+Expense report submitted for reimbursement. Receipts attached. Total amount reflects travel to the regional conference and client dinners. Per diem was within policy guidelines.
+
+User acceptance testing for the portal is scheduled to begin Monday. Test accounts have been provisioned. Please log any issues in JIRA under PROJECT-UT. Sign-off is required before production deployment.
+
+Quarterly review meeting scheduled for next Tuesday at 2 PM. Agenda items include budget variance analysis, hiring plan, and Q4 objectives. Action items from last meeting are still pending from Engineering.
+
+Expense report submitted for reimbursement. Receipts attached. Total amount reflects travel to the regional conference and client dinners. Per diem was within policy guidelines.
+
+The new backup procedure runs nightly at 02:00. Retention is 30 days for incremental and 12 months for full backups. Verify restore was tested last quarter.
+
+The new backup procedure runs nightly at 02:00. Retention is 30 days for incremental and 12 months for full backups. Verify restore was tested last quarter.
+
+The project timeline has been adjusted to account for the integration phase. Stakeholders will receive an updated Gantt chart by end of week. Please ensure all dependencies are documented in the shared drive.
+
+User acceptance testing for the portal is scheduled to begin Monday. Test accounts have been provisioned. Please log any issues in JIRA under PROJECT-UT. Sign-off is required before production deployment.
+
+The new backup procedure runs nightly at 02:00. Retention is 30 days for incremental and 12 months for full backups. Verify restore was tested last quarter.
+
+The project timeline has been adjusted to account for the integration phase. Stakeholders will receive an updated Gantt chart by end of week. Please ensure all dependencies are documented in the shared drive.
+
+The project timeline has been adjusted to account for the integration phase. Stakeholders will receive an updated Gantt chart by end of week. Please ensure all dependencies are documented in the shared drive.

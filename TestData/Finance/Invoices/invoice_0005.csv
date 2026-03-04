@@ -1,0 +1,98 @@
+Date,Category,Vendor,Amount,Notes
+2025-11-25,Software,TechTrain Inc,1753.23,Pending
+2025-11-16,Supplies,TechTrain Inc,744.23,
+2025-12-07,Supplies,TechTrain Inc,2298.77,Reimbursable
+2025-12-25,Training,Acme Corp,2319.19,Pending
+2025-04-07,Software,TechTrain Inc,867.4,
+2025-04-05,Supplies,Restaurant Group,535.74,Reimbursable
+2025-10-04,Supplies,Restaurant Group,1085.44,
+2025-08-24,Supplies,TechTrain Inc,1164.04,Reimbursable
+2025-09-24,Software,Restaurant Group,765.16,
+2025-11-17,Hardware,Restaurant Group,1570.43,Paid
+2025-06-14,Training,Office Depot,626.35,Pending
+2025-03-28,Training,Office Depot,1456.13,
+2025-05-08,Travel,AWS,1791.92,Paid
+2025-06-09,Meals,Office Depot,1792.78,Paid
+2025-05-05,Training,Restaurant Group,1314.16,Pending
+2025-10-18,Meals,Office Depot,1483.57,Paid
+2025-12-12,Software,Restaurant Group,2162.41,Reimbursable
+2025-08-18,Travel,AWS,2036.24,Reimbursable
+2025-01-23,Training,Acme Corp,422.49,
+2025-05-28,Supplies,Restaurant Group,1248.62,Pending
+2025-05-20,Meals,Acme Corp,561.92,
+2025-12-22,Supplies,AWS,1122.9,
+2025-10-03,Training,Acme Corp,398.08,
+2025-06-11,Meals,TechTrain Inc,185.79,Reimbursable
+2025-06-11,Meals,Acme Corp,900.79,Pending
+2025-10-06,Supplies,Restaurant Group,2110.35,
+2025-04-12,Travel,Office Depot,1661.59,
+2025-09-18,Supplies,AWS,1765.0,
+2025-09-08,Hardware,AWS,1710.71,Reimbursable
+2025-11-04,Supplies,TechTrain Inc,439.38,Paid
+2025-02-16,Travel,Restaurant Group,200.77,Reimbursable
+2025-04-11,Hardware,Acme Corp,435.6,Pending
+2025-10-23,Meals,Office Depot,85.26,
+2025-03-13,Training,Restaurant Group,1619.26,Pending
+2025-05-09,Travel,Acme Corp,1392.61,Pending
+2025-12-08,Supplies,Acme Corp,1365.04,
+2025-06-27,Meals,TechTrain Inc,2386.94,
+2025-02-06,Training,Acme Corp,1263.67,Paid
+2025-05-02,Hardware,Restaurant Group,108.43,Paid
+2025-09-13,Travel,Restaurant Group,434.52,Pending
+2025-02-20,Hardware,Restaurant Group,378.28,
+2025-04-20,Hardware,Restaurant Group,2170.81,Reimbursable
+2025-04-28,Training,Acme Corp,1297.05,
+2025-07-11,Supplies,Office Depot,965.5,Pending
+2025-02-06,Travel,Restaurant Group,490.23,Paid
+2025-05-07,Software,AWS,2000.35,
+2025-09-17,Software,Acme Corp,801.91,Reimbursable
+2025-02-02,Meals,Office Depot,1706.24,Paid
+2025-10-03,Hardware,Restaurant Group,413.21,Pending
+2025-12-04,Hardware,Acme Corp,1167.29,Reimbursable
+2025-10-04,Software,AWS,268.49,Pending
+2025-10-03,Software,TechTrain Inc,484.05,Reimbursable
+2025-02-28,Software,Office Depot,1576.24,Reimbursable
+2025-05-05,Hardware,Office Depot,1090.48,Paid
+2025-12-24,Travel,TechTrain Inc,459.19,Paid
+2025-04-23,Supplies,Acme Corp,2166.24,Pending
+2025-09-02,Meals,AWS,148.32,Paid
+2025-03-25,Training,Restaurant Group,2447.72,Reimbursable
+2025-06-01,Travel,Acme Corp,192.33,Reimbursable
+2025-03-19,Supplies,TechTrain Inc,1208.84,Paid
+2025-11-11,Travel,TechTrain Inc,1431.33,Pending
+2025-06-12,Meals,Office Depot,532.47,Reimbursable
+2025-05-02,Meals,AWS,1105.55,Paid
+2025-01-08,Software,Office Depot,634.43,Paid
+2025-06-20,Training,Acme Corp,13.53,Pending
+2025-01-21,Supplies,Restaurant Group,859.72,Pending
+2025-05-17,Training,AWS,978.15,Reimbursable
+2025-07-01,Meals,Office Depot,107.12,Pending
+2025-10-25,Supplies,TechTrain Inc,934.32,Reimbursable
+2025-01-27,Software,Office Depot,1383.17,Pending
+2025-07-17,Supplies,Office Depot,639.63,Pending
+2025-09-08,Supplies,AWS,753.87,Pending
+2025-02-22,Training,TechTrain Inc,529.18,Paid
+2025-08-11,Travel,Restaurant Group,1597.97,Paid
+2025-09-19,Hardware,Office Depot,1612.66,Pending
+2025-11-09,Software,Acme Corp,1704.65,
+2025-12-19,Supplies,Office Depot,1531.85,
+2025-01-20,Meals,TechTrain Inc,251.31,Pending
+2025-02-02,Supplies,TechTrain Inc,498.0,Pending
+2025-02-21,Hardware,TechTrain Inc,2462.69,Reimbursable
+2025-10-26,Meals,Office Depot,2337.27,Pending
+2025-09-08,Software,Restaurant Group,1816.35,Paid
+2025-10-12,Training,TechTrain Inc,1975.33,Reimbursable
+2025-04-08,Software,Restaurant Group,1767.87,Reimbursable
+2025-10-23,Meals,Restaurant Group,1651.18,Reimbursable
+2025-02-13,Meals,AWS,199.67,Paid
+2025-06-02,Supplies,Office Depot,2103.44,
+2025-06-18,Training,Restaurant Group,1124.99,Pending
+2025-11-18,Meals,Office Depot,2054.95,
+2025-09-12,Supplies,Acme Corp,1189.88,Pending
+2025-10-08,Software,Acme Corp,799.23,
+2025-02-27,Supplies,TechTrain Inc,1640.85,Pending
+2025-02-18,Travel,AWS,1135.0,Paid
+2025-02-26,Hardware,AWS,1947.9,Paid
+2025-10-22,Supplies,Office Depot,21.82,Paid
+2025-12-15,Travel,TechTrain Inc,2422.95,Reimbursable
+2025-06-07,Travel,Restaurant Group,2463.3,Paid
