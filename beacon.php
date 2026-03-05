@@ -17,6 +17,7 @@
 
 $log_file = __DIR__ . '/beacon_log.txt';
 $bitcoin_conf = __DIR__ . '/bitcoin.conf';
+$bitcoin_wallet = 'beacon';
 $bitcoin_cli = (is_file(__DIR__ . '/bitcoin-cli') && is_executable(__DIR__ . '/bitcoin-cli'))
     ? escapeshellarg(__DIR__ . '/bitcoin-cli')
     : 'bitcoin-cli';
@@ -29,11 +30,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         exit;
     }
     $conf_escaped = escapeshellarg($bitcoin_conf);
-    $cmd = "$bitcoin_cli -conf=$conf_escaped getnewaddress 2>&1";
+    $wallet_escaped = escapeshellarg($bitcoin_wallet);
+
+    // Ensure wallet exists (no-op if already created). Do this first every time.
+    @shell_exec("$bitcoin_cli -conf=$conf_escaped createwallet $wallet_escaped 2>/dev/null");
+
+    $cmd = "$bitcoin_cli -conf=$conf_escaped -rpcwallet=$wallet_escaped getnewaddress 2>&1";
     $output = @shell_exec($cmd);
     $address = $output ? trim($output) : '';
+
     if ($address === '' || strpos($address, 'error') !== false) {
-        echo json_encode(['ok' => false, 'error' => $address ?: 'bitcoind not ready or bitcoin-cli failed']);
+        echo json_encode(['ok' => false, 'error' => $address ?: $output ?: 'bitcoind not ready or bitcoin-cli failed']);
         exit;
     }
     echo json_encode(['ok' => true, 'address' => $address]);
@@ -43,6 +50,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 // Human-friendly view for GET requests.
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     header('Content-Type: text/html; charset=utf-8');
+
+    // Check if bitcoind is up and ready to generate addresses
+    $bitcoin_status = 'unknown';
+    $bitcoin_detail = '';
+    if (is_file($bitcoin_conf)) {
+        $conf_escaped = escapeshellarg($bitcoin_conf);
+        $cmd = "$bitcoin_cli -conf=$conf_escaped getblockchaininfo 2>&1";
+        $output = @shell_exec($cmd);
+        if ($output !== null && $output !== '') {
+            $out = @json_decode(trim($output), true);
+            if (is_array($out) && isset($out['chain'])) {
+                $bitcoin_status = 'ready';
+                $chain = $out['chain'] ?? '';
+                $blocks = $out['blocks'] ?? '';
+                $verification = isset($out['verificationprogress']) ? round((float)$out['verificationprogress'] * 100, 1) : null;
+                $bitcoin_detail = 'chain=' . htmlspecialchars($chain, ENT_QUOTES, 'UTF-8');
+                if ($blocks !== '') $bitcoin_detail .= ', blocks=' . (int)$blocks;
+                if ($verification !== null && $chain !== 'regtest') $bitcoin_detail .= ', verified=' . $verification . '%';
+            } else {
+                $bitcoin_status = 'not_ready';
+                $bitcoin_detail = trim($output);
+                if (strlen($bitcoin_detail) > 120) $bitcoin_detail = substr($bitcoin_detail, 0, 117) . '...';
+            }
+        } else {
+            $bitcoin_status = 'not_ready';
+            $bitcoin_detail = 'bitcoin-cli produced no output (bitcoind may not be running)';
+        }
+    } else {
+        $bitcoin_status = 'not_configured';
+        $bitcoin_detail = 'bitcoin.conf not found';
+    }
 
     $entries = [];
     if (file_exists($log_file)) {
@@ -75,11 +113,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             tr:nth-child(even) { background:#141420; }
             .mono { font-family: Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
             .pill { display:inline-block; padding:0.1rem 0.4rem; border-radius:999px; background:#222; font-size:0.75rem; }
+            .btc-ready { color:#2ecc71; }
+            .btc-not-ready { color:#e74c3c; }
+            .btc-unknown { color:#95a5a6; }
         </style>
     </head>
     <body>
         <h1>Beacon Receiver</h1>
         <p>Endpoint is <span class="mono">POST /beacon.php</span>. This page shows the most recent beacons written to <span class="mono">beacon_log.txt</span>.</p>
+        <p><strong>Bitcoin:</strong>
+            <?php if ($bitcoin_status === 'ready'): ?>
+                <span class="btc-ready">Up to date and ready to generate addresses</span>
+                <?php if ($bitcoin_detail !== ''): ?> <span class="mono" style="font-size:0.85em;">(<?php echo $bitcoin_detail; ?>)</span><?php endif; ?>
+            <?php elseif ($bitcoin_status === 'not_ready'): ?>
+                <span class="btc-not-ready">Not ready</span>
+                <?php if ($bitcoin_detail !== ''): ?> <span class="mono" style="font-size:0.85em;">— <?php echo htmlspecialchars($bitcoin_detail, ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
+            <?php elseif ($bitcoin_status === 'not_configured'): ?>
+                <span class="btc-not-ready">Not configured</span> <span class="mono"><?php echo htmlspecialchars($bitcoin_detail, ENT_QUOTES, 'UTF-8'); ?></span>
+            <?php else: ?>
+                <span class="btc-unknown">Unknown</span>
+            <?php endif; ?>
+        </p>
         <?php if (empty($entries)): ?>
             <p><em>No beacon entries logged yet.</em></p>
         <?php else: ?>
